@@ -82,12 +82,6 @@ library VowLib {
 
   //--- Vows ---//
 
-  function encodeVow(
-    bytes calldata eventBytes
-  ) internal pure returns(bytes memory vow) {
-    
-  }
-
   /**
    * ┌────────────────────────────────────────────────────────────┐
    * │                       VOW ENCODING                         │

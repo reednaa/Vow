@@ -42,15 +42,15 @@ contract MockEvent {
   function processVow(
     address directry,
     bytes calldata vow
-  ) external pure returns (
+  ) external view returns (
     uint256 chainId,
     uint256 latestBlockNumber,
     uint256 rootBlockNumber,
     address emitter,
     bytes32[] calldata topics,
     bytes calldata data
-  ) external view {
-    return VowLib.processVow(directory, vow);
+  ) {
+    return VowLib.processVow(directry, vow);
   }
 
   function verifySignedVow(
@@ -74,7 +74,7 @@ contract MockEvent {
   function hashTypedData(
     bytes32 structHash
   ) external pure returns (bytes32 digest) {
-    return VowLib.hashTypedData(structHash);
+    return VowLib._hashTypedData(structHash);
   }
   
   function vowTypehash(

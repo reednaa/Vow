@@ -22,7 +22,9 @@ contract WitnessDirectory is IWitnessDirectory, Ownable {
 
   uint256 qourum;
 
-  constructor(address owner) {
+  constructor(
+    address owner
+  ) {
     _initializeOwner(owner);
   }
 
@@ -80,11 +82,11 @@ contract WitnessDirectory is IWitnessDirectory, Ownable {
       let previousIndex := 0
       for { } 1 { i := add(i, 1) } {
         let signerIndex := shr(mul(31, 8), shl(mul(i, 8), indexMap))
-        
+
         if eq(signerIndex, 0) { break }
         if eq(previousIndex, signerIndex) {
-            mstore(0x00, 0xea7f2f56) // `SignerIndexRepeat()`.
-            revert(0x1c, 0x04)
+          mstore(0x00, 0xea7f2f56) // `SignerIndexRepeat()`.
+          revert(0x1c, 0x04)
         }
         previousIndex := signerIndex
 
@@ -93,8 +95,8 @@ contract WitnessDirectory is IWitnessDirectory, Ownable {
         let slot := keccak256(31, 42)
         let signer := shr(mul(8, 12), sload(slot))
         if eq(signer, 0) {
-            mstore(0x00, 0xe5c48ac5) // `ZeroSigner()`.
-            revert(0x1c, 0x04)
+          mstore(0x00, 0xe5c48ac5) // `ZeroSigner()`.
+          revert(0x1c, 0x04)
         }
 
         mstore(add(signers, add(mul(i, 32), 32)), signer)
