@@ -1,3 +1,4 @@
+import { initTelemetry, shutdownTelemetry } from "../telemetry/index.ts";
 import { makeWorkerUtils } from "graphile-worker";
 import { loadApiConfig } from "../config/env.ts";
 import { createDb, closeDb } from "../db/client.ts";
@@ -5,6 +6,7 @@ import { createApiServer } from "../api/server.ts";
 import { createHealthServer } from "../api/health.server.ts";
 
 async function main() {
+  initTelemetry();
   const config = loadApiConfig();
   const db = createDb(config.databaseUrl);
   const workerUtils = await makeWorkerUtils({ connectionString: config.databaseUrl });
@@ -36,6 +38,7 @@ async function main() {
     }
 
     await closeDb();
+    await shutdownTelemetry();
     process.exit(0);
   }
 

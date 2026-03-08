@@ -1,9 +1,11 @@
+import { initTelemetry, shutdownTelemetry } from "../telemetry/index.ts";
 import { loadWorkerConfig } from "../config/env.ts";
 import { createEnvSigner } from "../core/signing.ts";
 import { createDb, closeDb } from "../db/client.ts";
 import { setupWorker } from "../worker/setup.ts";
 
 async function main() {
+  initTelemetry();
   const config = loadWorkerConfig();
   const signer = createEnvSigner(config.witnessPrivateKey);
   const db = createDb(config.databaseUrl);
@@ -28,6 +30,7 @@ async function main() {
     }
 
     await closeDb();
+    await shutdownTelemetry();
     process.exit(0);
   }
 

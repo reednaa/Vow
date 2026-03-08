@@ -1,7 +1,9 @@
 import { type Task } from "graphile-worker";
 import { eq, sql } from "drizzle-orm";
 import { type Hex } from "viem";
+import { trace, SpanStatusCode } from "@opentelemetry/api";
 import { createRpcClient, type RpcClient } from "../rpc/client.ts";
+import { instrumentRpcClient } from "../rpc/instrumented-client.ts";
 import { fetchBlockConsistent, type ConsistentBlockResult } from "../rpc/consistency.ts";
 import { buildMerkleTree, ZERO_HASH } from "../core/merkle.ts";
 import { chains, rpcs, indexedBlocks, indexedEvents } from "../db/schema.ts";
@@ -30,6 +32,12 @@ export function createIndexBlockTask(
     const { chainId, blockNumber } = payload as IndexBlockPayload;
     const blockNumberBigInt = BigInt(blockNumber);
 
+    const tracer = trace.getTracer("vow-witness");
+    const span = tracer.startSpan("index-block", {
+      attributes: { "chain.id": chainId, "block.number": blockNumber },
+    });
+
+    try {
     // Fetch RPC URLs for this chain
     const rpcRows = await db
       .select({ url: rpcs.url })
@@ -43,7 +51,7 @@ export function createIndexBlockTask(
     }
 
     const rpcClients = rpcRows.map((row) =>
-      createRpcClient(row.url)
+      instrumentRpcClient(createRpcClient(row.url), { url: row.url, chainId })
     );
 
     // Fetch and validate block data from all RPCs
@@ -138,5 +146,12 @@ export function createIndexBlockTask(
         })
         .where(eq(chains.chainId, chainId));
     });
+    } catch (err: any) {
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      throw err;
+    } finally {
+      span.end();
+    }
   };
 }

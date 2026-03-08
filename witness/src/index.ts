@@ -1,3 +1,4 @@
+import { initTelemetry, shutdownTelemetry } from "./telemetry/index.ts";
 import { loadConfig } from "./config/env.ts";
 import { createEnvSigner } from "./core/signing.ts";
 import { createDb, closeDb } from "./db/client.ts";
@@ -8,6 +9,7 @@ import { createApiServer } from "./api/server.ts";
 import path from "path";
 
 async function main() {
+  initTelemetry();
   const config = loadConfig();
 
   const signer = createEnvSigner(config.witnessPrivateKey);
@@ -54,6 +56,7 @@ async function main() {
 
     clearTimeout(timeout);
     await closeDb();
+    await shutdownTelemetry();
     process.exit(0);
   }
 
