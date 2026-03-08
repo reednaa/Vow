@@ -24,7 +24,6 @@ library VowLib {
   using EfficientHashLib for bytes32[];
 
   error InvalidlySignedRoot();
-  error InvalidMerkleProof();
   error TooManyTopics(); // 0x643f8f9e
 
   bytes32 private constant VOW_TYPE_HASH =
