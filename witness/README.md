@@ -39,8 +39,9 @@ Request flow:
 
 ## Environment Variables
 
-- `WITNESS_PRIVATE_KEY` (required): 32-byte hex private key (with or without `0x`)
 - `DATABASE_URL` (required): PostgreSQL connection string
+- `WITNESS_PRIVATE_KEY` (required for `start` / `start:worker`): 32-byte hex private key (with or without `0x`)
+- `WITNESS_SIGNER_ADDRESS` (required for `start:api`): 20-byte hex address for the configured signer
 - `API_PORT` (optional): API server port, default `3000`
 - `HEALTH_PORT` (optional): health server port, default `3001`
 
@@ -91,6 +92,15 @@ SQL
 bun run start
 ```
 
+Split-process local mode (matches production):
+
+```bash
+bun run start:migrate
+# Use the address derived from WITNESS_PRIVATE_KEY
+WITNESS_SIGNER_ADDRESS=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bun run start:api
+bun run start:worker
+```
+
 ## Verify Locally
 
 Health endpoint:
@@ -139,7 +149,7 @@ psql "$DATABASE_URL" -c "SELECT chain_id, block_number, log_index, tree_index, l
 
 ## Troubleshooting
 
-- `Missing required environment variable: ...`: set `WITNESS_PRIVATE_KEY` and `DATABASE_URL`.
+- `Missing required environment variable: ...`: set required role env vars (`DATABASE_URL`, and either `WITNESS_PRIVATE_KEY` or `WITNESS_SIGNER_ADDRESS`).
 - `WITNESS_PRIVATE_KEY must be a 32-byte hex-encoded private key`: key must be exactly 64 hex chars (optional `0x` prefix).
 - `Chain not configured`: add a matching row in `chains` for requested CAIP-2 chain.
 - `Chain X has only Y RPC(s). At least 2 required.`: add at least one more RPC URL for that chain in `rpcs`.
@@ -149,6 +159,7 @@ psql "$DATABASE_URL" -c "SELECT chain_id, block_number, log_index, tree_index, l
 ## Security Notes
 
 - Treat `WITNESS_PRIVATE_KEY` as sensitive signing authority.
+- In split mode, only the worker should receive `WITNESS_PRIVATE_KEY`; API should use `WITNESS_SIGNER_ADDRESS`.
 - Use a dedicated non-production key for local development.
 - Prefer RPC providers from independent operators to reduce correlated trust risk.
 

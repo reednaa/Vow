@@ -8,6 +8,9 @@
   },
   "scripts": {
     "start": "bun src/index.ts",
+    "start:api": "bun src/entrypoints/api.ts",
+    "start:worker": "bun src/entrypoints/worker.ts",
+    "start:migrate": "bun src/entrypoints/migrate.ts",
     "dev": "bun --hot src/index.ts",
     "test": "bun test",
     "db:generate": "bunx drizzle-kit generate",
