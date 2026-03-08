@@ -35,8 +35,6 @@ jobs:
 
       - name: Build
         working-directory: web
-        env:
-          BASE_PATH: /Vow
         run: bun run build
 
       - name: Upload artifact

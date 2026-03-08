@@ -15,10 +15,10 @@
   let chainId = $state(DEFAULT_CHAIN_ID);
   let blockNumber = $state(0);
   let logIndex = $state(0);
-  let rpcUrl = $state("");
+  let rpcUrl = $state("https://ethereum-rpc.publicnode.com");
   let directoryAddress = $state(DEFAULT_WITNESS_DIRECTORY);
   let mockVowLibAddress = $state(DEFAULT_MOCK_VOW_LIB);
-  let witnessSources = $state<WitnessSource[]>([{ url: "", signerIndex: 1 }]);
+  let witnessSources = $state<WitnessSource[]>([{ url: "https://witness.vav.me", signerIndex: 1 }]);
 
   // ── Execution state ─────────────────────────────────────────────────────────
 
@@ -29,6 +29,7 @@
   let steps = $state<Step[]>([]);
   let vowHex = $state<Hex | null>(null);
   let vowResult = $state<VowResult | null>(null);
+  let processVowGasEstimate = $state<bigint | null>(null);
   let globalError = $state<string | null>(null);
   let showRawVow = $state(false);
 
@@ -71,6 +72,7 @@
     running = true;
     vowHex = null;
     vowResult = null;
+    processVowGasEstimate = null;
     globalError = null;
     abortController = new AbortController();
 
@@ -199,14 +201,16 @@
       // ── Step 4: on-chain call ─────────────────────────────────────────────
       setStep(3, "running");
 
-      vowResult = await callProcessVow(
+      const processVowCall = await callProcessVow(
         rpcUrl,
         mockVowLibAddress as Address,
         directoryAddress as Address,
         vowHex
       );
+      vowResult = processVowCall.vowResult;
+      processVowGasEstimate = processVowCall.gasEstimate;
 
-      setStep(3, "done");
+      setStep(3, "done", `${processVowGasEstimate.toString()} gas`);
       setStep(4, "done");
     } catch (err) {
       globalError = err instanceof Error ? err.message : String(err);
@@ -517,6 +521,12 @@
             <td class="py-2 text-gray-200" data-testid="result-rootBlockNumber"
               >{vowResult.rootBlockNumber.toString()}</td
             >
+          </tr>
+          <tr class="border-b border-gray-800">
+            <td class="py-2 pr-4 text-gray-500">estimatedGas</td>
+            <td class="py-2 text-gray-200" data-testid="result-gas-estimate">
+              {processVowGasEstimate?.toString() ?? "n/a"}
+            </td>
           </tr>
           <tr class="border-b border-gray-800">
             <td class="py-2 pr-4 text-gray-500">emitter</td>

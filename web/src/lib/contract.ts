@@ -63,23 +63,35 @@ export async function callProcessVow(
   mockVowLibAddress: Address,
   directoryAddress: Address,
   vowBytes: Hex
-): Promise<VowResult> {
+): Promise<{ vowResult: VowResult; gasEstimate: bigint }> {
   const client = createPublicClient({ transport: http(rpcUrl) });
 
-  const result = await client.readContract({
-    address: mockVowLibAddress,
-    abi: MOCK_VOW_LIB_ABI,
-    functionName: "processVow",
-    args: [directoryAddress, vowBytes],
-  });
+  const args = [directoryAddress, vowBytes] as const;
+  const [result, gasEstimate] = await Promise.all([
+    client.readContract({
+      address: mockVowLibAddress,
+      abi: MOCK_VOW_LIB_ABI,
+      functionName: "processVow",
+      args,
+    }),
+    client.estimateContractGas({
+      address: mockVowLibAddress,
+      abi: MOCK_VOW_LIB_ABI,
+      functionName: "processVow",
+      args,
+    }),
+  ]);
 
   const [chainId, rootBlockNumber, emitter, topics, data] = result;
 
   return {
-    chainId,
-    rootBlockNumber,
-    emitter: emitter as Address,
-    topics: topics as Hex[],
-    data: data as Hex,
+    vowResult: {
+      chainId,
+      rootBlockNumber,
+      emitter: emitter as Address,
+      topics: topics as Hex[],
+      data: data as Hex,
+    },
+    gasEstimate,
   };
 }

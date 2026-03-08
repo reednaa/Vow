@@ -33,6 +33,7 @@ const MOCK_PROCESS_VOW_RESULT =
   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" +
   "0000000000000000000000000000000000000000000000000000000000000004" +
   "deadbeef00000000000000000000000000000000000000000000000000000000";
+const MOCK_PROCESS_VOW_GAS_ESTIMATE = "0x1e240";
 
 function buildEthCallResult(data?: string): string {
   if (data?.startsWith(GET_SIGNER_SELECTOR)) {
@@ -41,18 +42,24 @@ function buildEthCallResult(data?: string): string {
   return MOCK_PROCESS_VOW_RESULT;
 }
 
+function buildRpcResult(method?: string, data?: string): string {
+  if (method === "eth_estimateGas") return MOCK_PROCESS_VOW_GAS_ESTIMATE;
+  if (method === "eth_call") return buildEthCallResult(data);
+  return "0x0";
+}
+
 function buildRpcResponse(body: any) {
   if (Array.isArray(body)) {
     return body.map((entry: any) => ({
       id: entry.id ?? 1,
       jsonrpc: "2.0",
-      result: buildEthCallResult(entry?.params?.[0]?.data),
+      result: buildRpcResult(entry?.method, entry?.params?.[0]?.data),
     }));
   }
   return {
     id: body.id ?? 1,
     jsonrpc: "2.0",
-    result: buildEthCallResult(body?.params?.[0]?.data),
+    result: buildRpcResult(body?.method, body?.params?.[0]?.data),
   };
 }
 
@@ -66,8 +73,8 @@ test("page loads with title and form", async ({ page }) => {
 test("form validation shows error on empty RPC URL", async ({ page }) => {
   await page.goto("/");
 
-  // Fill enough to pass other checks, leave RPC URL blank
-  await page.fill('[placeholder="https://witness.example.com"]', "https://witness.example.com");
+  // Clear the default RPC URL so validation can trigger.
+  await page.fill('input[placeholder="https://rpc.example.com"]', "");
   await page.getByRole("button", { name: "Run" }).click();
 
   await expect(page.getByTestId("validation-error")).toBeVisible();
@@ -112,7 +119,7 @@ test("mock witness flow completes with proof step", async ({ page }) => {
   // Mock the RPC call (eth_call)
   await page.route("https://mock-rpc.example.com", async (route) => {
     const body = JSON.parse((route.request().postData() ?? "{}") as string);
-    if (body.method === "eth_call" || Array.isArray(body)) {
+    if (body.method === "eth_call" || body.method === "eth_estimateGas" || Array.isArray(body)) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -196,6 +203,7 @@ test("result table renders all fields when mock returns decoded data", async ({ 
   await expect(page.getByTestId("result")).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId("result-chainId")).toContainText("1");
   await expect(page.getByTestId("result-rootBlockNumber")).toContainText("100");
+  await expect(page.getByTestId("result-gas-estimate")).toContainText("123456");
   await expect(page.getByTestId("result-emitter")).toContainText(
     "0x1111111111111111111111111111111111111111"
   );
