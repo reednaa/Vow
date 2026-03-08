@@ -1,6 +1,6 @@
 import { NodeSDK } from "@opentelemetry/sdk-node";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 
 let sdk: NodeSDK | undefined;
@@ -10,10 +10,10 @@ export function initTelemetry(): void {
 
   sdk = new NodeSDK({
     traceExporter: new OTLPTraceExporter(),
-    metricReader: new PeriodicExportingMetricReader({
+    metricReaders: [new PeriodicExportingMetricReader({
       exporter: new OTLPMetricExporter(),
       exportIntervalMillis: 15_000,
-    }),
+    })],
   });
 
   sdk.start();
