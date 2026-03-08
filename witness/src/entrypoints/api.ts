@@ -14,7 +14,9 @@ async function main() {
     config.apiPort,
     db,
     workerUtils.addJob,
-    config.witnessSignerAddress
+    config.witnessSignerAddress,
+    config.adminPasswordHash,
+    config.adminJwtSecret
   );
   const healthServer = createHealthServer(config.healthPort);
 

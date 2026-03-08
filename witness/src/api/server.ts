@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { mountWitnessHandler, type AddJobFn } from "./witness.handler.ts";
+import { createAdminHandler } from "./admin/index.ts";
 
 function applyCorsHeaders(request: Request, set: { headers: Record<string, string> }) {
   const origin = request.headers.get("origin");
@@ -16,7 +17,9 @@ export function createApiServer(
   port: number,
   db: any,
   addJob: AddJobFn,
-  witnessSigner: string
+  witnessSigner: string,
+  adminPasswordHash: string | null = null,
+  adminJwtSecret: string | null = null
 ) {
   const app = new Elysia()
     .onRequest(({ request, set }) => {
@@ -36,6 +39,7 @@ export function createApiServer(
     });
 
   mountWitnessHandler(app, db, addJob, witnessSigner);
+  app.use(createAdminHandler(db, adminPasswordHash, adminJwtSecret));
 
   app.listen(port);
   return app;

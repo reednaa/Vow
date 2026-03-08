@@ -12,6 +12,8 @@
     "start:worker": "bun src/entrypoints/worker.ts",
     "start:migrate": "bun src/entrypoints/migrate.ts",
     "dev": "bun --hot src/index.ts",
+    "dev:admin": "cd admin && bun run dev",
+    "build:admin": "cd admin && bun run build",
     "test": "bun test",
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bunx drizzle-kit migrate",
@@ -25,6 +27,8 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@elysiajs/jwt": "^1.4.1",
+    "@elysiajs/static": "^1.4.7",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.213.0",
     "@opentelemetry/exporter-metrics-otlp-proto": "^0.213.0",
