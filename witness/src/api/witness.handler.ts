@@ -1,6 +1,11 @@
 import { Elysia } from "elysia";
 import { eq, and, sql } from "drizzle-orm";
-import { type Hex, recoverAddress } from "viem";
+import {
+  compactSignatureToSignature,
+  type Hex,
+  parseCompactSignature,
+  recoverAddress,
+} from "viem";
 import { chains, indexedBlocks, indexedEvents } from "../db/schema.ts";
 import { buildMerkleTree, generateProof } from "../core/merkle.ts";
 import { decodeEvent } from "../core/encoding.ts";
@@ -89,13 +94,17 @@ export function createWitnessController(
         const { emitter, topics, data } = decodeEvent(new Uint8Array(canonicalBytes));
         let signatureSigner = ZERO_ADDRESS;
         try {
+          const signature = block.signature as Hex;
+          const recoverableSignature = signature.length === 130
+            ? compactSignatureToSignature(parseCompactSignature(signature))
+            : signature;
           signatureSigner = await recoverAddress({
             hash: computeVowDigest({
               chainId: BigInt(chainId),
               rootBlockNumber: blockNumberBigInt,
               root: block.merkleRoot as Hex,
             }),
-            signature: block.signature as Hex,
+            signature: recoverableSignature,
           });
         } catch (error) {
           console.warn(

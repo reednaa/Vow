@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { eq, and } from "drizzle-orm";
-import { type Address, type Hex, toHex, recoverAddress } from "viem";
+import {
+  compactSignatureToSignature,
+  type Address,
+  type Hex,
+  parseCompactSignature,
+  recoverAddress,
+  toHex,
+} from "viem";
 import { createDb, closeDb } from "../src/db/client";
 import { chains, rpcs, indexedBlocks, indexedEvents } from "../src/db/schema";
 import { createIndexBlockTask } from "../src/worker/index-block.task";
@@ -120,7 +127,11 @@ describe("index-block task", () => {
       rootBlockNumber: BigInt(blockNumber),
       root: expectedRoot,
     });
-    const recovered = await recoverAddress({ hash: digest, signature: block!.signature as Hex });
+    const signature = block!.signature as Hex;
+    const recoverableSignature = signature.length === 130
+      ? compactSignatureToSignature(parseCompactSignature(signature))
+      : signature;
+    const recovered = await recoverAddress({ hash: digest, signature: recoverableSignature });
     expect(recovered.toLowerCase()).toBe(TEST_ADDRESS.toLowerCase());
 
     // Verify indexed_events (3 rows)

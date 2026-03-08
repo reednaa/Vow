@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { readFileSync } from "fs";
 import { eq, and } from "drizzle-orm";
 import {
+  compactSignatureToSignature,
   type Address,
   type Hex,
   createPublicClient,
@@ -9,6 +10,7 @@ import {
   createTestClient,
   http,
   defineChain,
+  parseCompactSignature,
   toHex,
   recoverAddress,
 } from "viem";
@@ -242,7 +244,11 @@ describe("E2E: anvil → witness → on-chain processVow", () => {
       rootBlockNumber: BigInt(witness.rootBlockNumber),
       root: witness.root as Hex,
     });
-    const recovered = await recoverAddress({ hash: digest, signature: witness.signature as Hex });
+    const signature = witness.signature as Hex;
+    const recoverableSignature = signature.length === 130
+      ? compactSignatureToSignature(parseCompactSignature(signature))
+      : signature;
+    const recovered = await recoverAddress({ hash: digest, signature: recoverableSignature });
     expect(recovered.toLowerCase()).toBe(ANVIL_ADDRESS.toLowerCase());
   });
 

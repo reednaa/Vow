@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { eq, and } from "drizzle-orm";
-import { type Address, type Hex, toBytes, recoverAddress } from "viem";
+import {
+  compactSignatureToSignature,
+  type Address,
+  type Hex,
+  parseCompactSignature,
+  recoverAddress,
+  toBytes,
+} from "viem";
 import { Elysia } from "elysia";
 import { createDb, closeDb } from "../src/db/client";
 import { chains, rpcs, indexedBlocks, indexedEvents } from "../src/db/schema";
@@ -209,7 +216,10 @@ describe("Integration: request → job → index → proof", () => {
       root: body.witness.root as Hex,
     });
     const sigHex = body.witness.signature as Hex;
-    const recovered = await recoverAddress({ hash: digest, signature: sigHex });
+    const recoverableSignature = sigHex.length === 130
+      ? compactSignatureToSignature(parseCompactSignature(sigHex))
+      : sigHex;
+    const recovered = await recoverAddress({ hash: digest, signature: recoverableSignature });
     const signer = createEnvSigner(ANVIL_KEY);
     expect(recovered.toLowerCase()).toBe(signer.address().toLowerCase());
   });

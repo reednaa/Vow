@@ -1,5 +1,12 @@
 import { describe, it, expect } from "bun:test";
-import { type Hex, keccak256, toBytes, recoverAddress } from "viem";
+import {
+  compactSignatureToSignature,
+  type Hex,
+  keccak256,
+  parseCompactSignature,
+  recoverAddress,
+  toBytes,
+} from "viem";
 import { computeVowDigest, createEnvSigner } from "../src/core/signing";
 
 const TEST_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -49,12 +56,12 @@ describe("createEnvSigner", () => {
     expect(signer.address().toLowerCase()).toBe(TEST_ADDRESS.toLowerCase());
   });
 
-  it("signVow returns a 65-byte packed hex signature", async () => {
+  it("signVow returns a 64-byte compact hex signature", async () => {
     const signer = createEnvSigner(TEST_PRIVATE_KEY);
     const sig = await signer.signVow(SAMPLE_PARAMS);
-    // 0x + 130 hex chars = 132 total (65 bytes)
-    expect(sig.length).toBe(132);
-    expect(sig).toMatch(/^0x[0-9a-f]{130}$/);
+    // 0x + 128 hex chars = 130 total (64 bytes)
+    expect(sig.length).toBe(130);
+    expect(sig).toMatch(/^0x[0-9a-f]{128}$/);
   });
 });
 
@@ -64,10 +71,13 @@ describe("signer.signVow", () => {
     const digest = computeVowDigest(SAMPLE_PARAMS);
     const sig = await signer.signVow(SAMPLE_PARAMS);
 
-    // 65 bytes = 0x + 130 hex chars
-    expect(sig.length).toBe(132);
+    // 64 bytes = 0x + 128 hex chars
+    expect(sig.length).toBe(130);
 
-    const recovered = await recoverAddress({ hash: digest, signature: sig });
+    const recoverableSignature = sig.length === 130
+      ? compactSignatureToSignature(parseCompactSignature(sig))
+      : sig;
+    const recovered = await recoverAddress({ hash: digest, signature: recoverableSignature });
     expect(recovered.toLowerCase()).toBe(TEST_ADDRESS.toLowerCase());
   });
 

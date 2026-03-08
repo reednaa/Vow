@@ -1,4 +1,10 @@
-import { type Hex, hashTypedData } from "viem";
+import {
+  type Hex,
+  hashTypedData,
+  parseSignature,
+  serializeCompactSignature,
+  signatureToCompactSignature,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Signer, VowParams } from "./signer.interface.ts";
 
@@ -34,7 +40,7 @@ export function createEnvSigner(privateKeyHex: string): Signer {
 
   return {
     async signVow(params: VowParams) {
-      return account.signTypedData({
+      const signature = await account.signTypedData({
         domain: VOW_DOMAIN,
         types: VOW_TYPES,
         primaryType: "Vow",
@@ -44,10 +50,10 @@ export function createEnvSigner(privateKeyHex: string): Signer {
           root: params.root,
         },
       });
+      return serializeCompactSignature(signatureToCompactSignature(parseSignature(signature)));
     },
     address() {
       return account.address;
     },
   };
 }
-
