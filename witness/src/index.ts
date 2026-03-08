@@ -64,7 +64,8 @@ async function main() {
   process.on("SIGINT", shutdown);
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error("Fatal startup error:", err);
+  await shutdownTelemetry();
   process.exit(1);
 });

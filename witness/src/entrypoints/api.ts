@@ -46,7 +46,8 @@ async function main() {
   process.on("SIGINT", shutdown);
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
   console.error("API startup error:", error);
+  await shutdownTelemetry();
   process.exit(1);
 });
