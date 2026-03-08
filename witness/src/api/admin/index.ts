@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import staticPlugin from "@elysiajs/static";
+import { existsSync } from "fs";
 import { createAuthHandler } from "./auth.ts";
 import { createAdminApiPlugin } from "./api.ts";
 
@@ -26,13 +27,15 @@ export function createAdminHandler(
       });
   }
 
-  return new Elysia()
+  const app = new Elysia()
     .use(createAuthHandler(adminPasswordHash, adminJwtSecret))
-    .use(createAdminApiPlugin(db, adminJwtSecret))
-    .use(
-      staticPlugin({
-        assets: "public/admin",
-        prefix: "/admin",
-      })
-    );
+    .use(createAdminApiPlugin(db, adminJwtSecret));
+
+  if (existsSync("public/admin")) {
+    app.use(staticPlugin({ assets: "public/admin", prefix: "/admin" }));
+  } else {
+    console.warn("[admin] public/admin not found — run `bun run build:admin` to enable the UI");
+  }
+
+  return app;
 }
