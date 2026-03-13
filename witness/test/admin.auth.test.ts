@@ -6,7 +6,8 @@ import { createAdminApiPlugin } from "../src/api/admin/api";
 const JWT_SECRET = "test-secret-for-admin-auth";
 const WRONG_SECRET = "wrong-secret-does-not-match";
 
-let app: Elysia;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let app: any;
 
 async function sign(secret: string, payload: object = { sub: "admin" }, expiresIn?: string) {
   const key = new TextEncoder().encode(secret);

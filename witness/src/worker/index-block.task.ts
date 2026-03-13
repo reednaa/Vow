@@ -32,6 +32,9 @@ export function createIndexBlockTask(
     const { chainId, blockNumber } = payload as IndexBlockPayload;
     const blockNumberBigInt = BigInt(blockNumber);
 
+    const startTime = Date.now();
+    const elapsed = () => `+${Date.now() - startTime}ms`;
+
     console.log(`[index-block] start chainId=${chainId} blockNumber=${blockNumber}`);
 
     const tracer = trace.getTracer("vow-witness");
@@ -41,13 +44,13 @@ export function createIndexBlockTask(
       async (span) => {
         try {
           // Fetch RPC URLs for this chain
-          console.log(`[index-block] fetching RPC URLs for chainId=${chainId}`);
+          console.log(`[index-block] ${elapsed()} fetching RPC URLs for chainId=${chainId}`);
           const rpcRows = await db
             .select({ url: rpcs.url })
             .from(rpcs)
             .where(eq(rpcs.chainId, chainId));
 
-          console.log(`[index-block] found ${rpcRows.length} RPC(s) for chainId=${chainId}`);
+          console.log(`[index-block] ${elapsed()} found ${rpcRows.length} RPC(s) for chainId=${chainId}`);
 
           if (rpcRows.length < 2) {
             throw new Error(
@@ -61,24 +64,24 @@ export function createIndexBlockTask(
           );
 
           // Fetch and validate block data from all RPCs
-          console.log(`[index-block] fetching block ${blockNumber} from ${rpcClients.length} RPC(s)`);
+          console.log(`[index-block] ${elapsed()} fetching block ${blockNumber} from ${rpcClients.length} RPC(s)`);
           const fetcher = fetchBlock ?? fetchBlockConsistent;
           const consistent = await fetcher(rpcClients, blockNumberBigInt);
 
           console.log(
-            `[index-block] block fetched blockHash=${consistent.blockHash} events=${consistent.events.length} latestBlock=${consistent.latestBlock}`
+            `[index-block] ${elapsed()} block fetched blockHash=${consistent.blockHash} events=${consistent.events.length} latestBlock=${consistent.latestBlock}`
           );
 
           // Handle empty block
           if (consistent.events.length === 0) {
-            console.log(`[index-block] empty block, signing zero-root vow`);
+            console.log(`[index-block] ${elapsed()} empty block, signing zero-root vow`);
             const sig = await signer.signVow({
               chainId: BigInt(chainId),
               rootBlockNumber: blockNumberBigInt,
               root: ZERO_HASH,
             });
 
-            console.log(`[index-block] persisting empty block chainId=${chainId} blockNumber=${blockNumber}`);
+            console.log(`[index-block] ${elapsed()} persisting empty block chainId=${chainId} blockNumber=${blockNumber}`);
             await db.transaction(async (tx) => {
               await tx
                 .insert(indexedBlocks)
@@ -101,15 +104,15 @@ export function createIndexBlockTask(
                 .where(eq(chains.chainId, chainId));
             });
 
-            console.log(`[index-block] done (empty) chainId=${chainId} blockNumber=${blockNumber}`);
+            console.log(`[index-block] ${elapsed()} done (empty) chainId=${chainId} blockNumber=${blockNumber}`);
             return;
           }
 
           // Build Merkle tree from leaf hashes
-          console.log(`[index-block] building merkle tree from ${consistent.events.length} leaf(ves)`);
+          console.log(`[index-block] ${elapsed()} building merkle tree from ${consistent.events.length} leaf(ves)`);
           const leafHashes = consistent.events.map((e) => e.leafHash as Hex);
           const { root: merkleRoot, tree } = buildMerkleTree(leafHashes);
-          console.log(`[index-block] merkle root=${merkleRoot}`);
+          console.log(`[index-block] ${elapsed()} merkle root=${merkleRoot}`);
 
           // Determine tree index (position in sorted leaf array = tree[0])
           const sortedLeaves = tree[0]!;
@@ -119,7 +122,7 @@ export function createIndexBlockTask(
           }
 
           // Sign the Vow struct
-          console.log(`[index-block] signing vow chainId=${chainId} blockNumber=${blockNumber} root=${merkleRoot}`);
+          console.log(`[index-block] ${elapsed()} signing vow chainId=${chainId} blockNumber=${blockNumber} root=${merkleRoot}`);
           const sig = await signer.signVow({
             chainId: BigInt(chainId),
             rootBlockNumber: blockNumberBigInt,
@@ -127,7 +130,7 @@ export function createIndexBlockTask(
           });
 
           // Write everything in a single transaction
-          console.log(`[index-block] persisting block and ${consistent.events.length} event(s)`);
+          console.log(`[index-block] ${elapsed()} persisting block and ${consistent.events.length} event(s)`);
           await db.transaction(async (tx) => {
             await tx
               .insert(indexedBlocks)
@@ -163,9 +166,9 @@ export function createIndexBlockTask(
               .where(eq(chains.chainId, chainId));
           });
 
-          console.log(`[index-block] done chainId=${chainId} blockNumber=${blockNumber} events=${consistent.events.length}`);
+          console.log(`[index-block] ${elapsed()} done chainId=${chainId} blockNumber=${blockNumber} events=${consistent.events.length}`);
         } catch (err: any) {
-          console.error(`[index-block] error chainId=${chainId} blockNumber=${blockNumber}:`, err);
+          console.error(`[index-block] ${elapsed()} error chainId=${chainId} blockNumber=${blockNumber}:`, err);
           span.recordException(err);
           span.setStatus({ code: SpanStatusCode.ERROR });
           throw err;
