@@ -4,6 +4,9 @@
 
 Protocol-critical TypeScript primitives live in [`../typescript`](../typescript) as `@vow/protocol`. The witness service uses that SDK for CAIP-2 normalization, event encoding, Merkle proofs, Vow typed-data digests, signer recovery, and client payload encoding.
 
+Every stored canonical event begins with a one-byte codec: `0x01` for EVM and `0x02`
+for Solana. This byte is part of the double-Keccak Merkle leaf.
+
 ## What This Service Does
 
 - Accepts EVM witness requests by chain/block/log index and Solana witness requests by chain/transaction/event index.

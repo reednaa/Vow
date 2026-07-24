@@ -17,7 +17,7 @@ import { MockEvent } from "./VowLib.t.sol";
  *
  * Event used in every case:
  *   Transfer(address indexed from, address indexed to, uint256 amount)
- *   3 topics, 32 bytes data → evt = 21 + 3*32 + 32 = 149 bytes
+ *   3 topics, 32 bytes data → evt = 1 + 21 + 3*32 + 32 = 150 bytes
  */
 contract GasEstimateTest is Test {
   WitnessDirectory directory;

@@ -18,6 +18,10 @@ export declare const mockVowLibAbi: readonly [{
     readonly type: "error";
     readonly inputs: readonly [];
 }, {
+    readonly name: "InvalidEventCodec";
+    readonly type: "error";
+    readonly inputs: readonly [];
+}, {
     readonly name: "TooManyTopics";
     readonly type: "error";
     readonly inputs: readonly [];

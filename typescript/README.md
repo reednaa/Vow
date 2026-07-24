@@ -11,6 +11,11 @@ The package owns the protocol byte layout and shared client flow:
 - witness HTTP polling and multi-witness payload merging
 - `VowLib.processVow`, `decodeEvent`, `decodeEmitCPI`, and `WitnessDirectory.getSigner` helpers through injected viem-compatible functions
 
+Canonical event bytes include the source codec as their first byte. `EVM_EVENT_CODEC`
+is `0x01` and `SOLANA_EVENT_CODEC` is `0x02`; the codec is covered by the
+double-Keccak leaf hash. The chain-specific encoders add it and the corresponding
+decoders require it.
+
 ## Install
 
 ```bash
@@ -31,9 +36,7 @@ const witness = await pollWitness("https://witness.example.com", {
   logIndex: 2820,
 });
 
-const vow = encodeVow([
-  { witness, signerIndex: 1 },
-] satisfies SignedWitness[]);
+const vow = encodeVow([{ witness, signerIndex: 1 }] satisfies SignedWitness[]);
 ```
 
 ## Verify With Viem
@@ -42,7 +45,9 @@ const vow = encodeVow([
 import { createPublicClient, http } from "viem";
 import { processVow } from "@vow/protocol";
 
-const client = createPublicClient({ transport: http("https://ethereum-rpc.publicnode.com") });
+const client = createPublicClient({
+  transport: http("https://ethereum-rpc.publicnode.com"),
+});
 
 const { processVowResult } = await processVow({
   readContract: client.readContract,

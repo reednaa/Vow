@@ -262,7 +262,7 @@ beforeAll(async () => {
 
   // Allow server to settle
   await new Promise((r) => setTimeout(r, 100));
-});
+}, 30_000);
 
 afterAll(async () => {
   try { app.stop(); } catch {}

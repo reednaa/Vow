@@ -9,6 +9,7 @@ export const witnessDirectoryAbi = [
 ];
 export const mockVowLibAbi = [
     { name: "InvalidlySignedRoot", type: "error", inputs: [] },
+    { name: "InvalidEventCodec", type: "error", inputs: [] },
     { name: "TooManyTopics", type: "error", inputs: [] },
     {
         name: "NoQourum",

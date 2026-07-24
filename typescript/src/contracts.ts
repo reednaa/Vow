@@ -22,6 +22,7 @@ export const witnessDirectoryAbi = [
 
 export const mockVowLibAbi = [
   { name: "InvalidlySignedRoot", type: "error", inputs: [] },
+  { name: "InvalidEventCodec", type: "error", inputs: [] },
   { name: "TooManyTopics", type: "error", inputs: [] },
   {
     name: "NoQourum",
@@ -74,7 +75,7 @@ export const mockVowLibAbi = [
 export async function getDirectorySigner(
   readContract: ReadContractFn,
   directoryAddress: Address,
-  signerIndex: number,
+  signerIndex: number
 ): Promise<Address> {
   return (await readContract({
     address: directoryAddress,
@@ -94,7 +95,7 @@ export async function validateWitnessSigners(options: {
       const onChainSigner = await getDirectorySigner(
         options.readContract,
         options.directoryAddress,
-        signedWitness.signerIndex,
+        signedWitness.signerIndex
       );
       const witnessSigner = signedWitness.witness.signer;
 
@@ -104,7 +105,7 @@ export async function validateWitnessSigners(options: {
         onChainSigner,
         matches: onChainSigner.toLowerCase() === witnessSigner.toLowerCase(),
       };
-    }),
+    })
   );
 }
 

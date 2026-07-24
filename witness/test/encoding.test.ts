@@ -3,6 +3,7 @@ import { type Address, type Hex, toBytes, toHex, keccak256 } from "viem";
 import {
   computeLeafHash,
   decodeEthereumEvent as decodeEvent,
+  EVM_EVENT_CODEC,
   encodeEthereumEvent as encodeEvent,
 } from "@vow/protocol";
 
@@ -20,49 +21,54 @@ function makeTopics(n: number): Hex[] {
 describe("encodeEvent", () => {
   it("encodes with 0 topics", () => {
     const encoded = encodeEvent(SAMPLE_EMITTER, [], "0x");
-    expect(encoded.length).toBe(21); // 20 + 1
+    expect(encoded.length).toBe(1 + 20 + 1);
   });
 
   it("encodes with 1 topic", () => {
     const encoded = encodeEvent(SAMPLE_EMITTER, makeTopics(1), "0x");
-    expect(encoded.length).toBe(20 + 1 + 32);
+    expect(encoded.length).toBe(1 + 20 + 1 + 32);
   });
 
   it("encodes with 2 topics", () => {
     const encoded = encodeEvent(SAMPLE_EMITTER, makeTopics(2), "0x");
-    expect(encoded.length).toBe(20 + 1 + 64);
+    expect(encoded.length).toBe(1 + 20 + 1 + 64);
   });
 
   it("encodes with 3 topics", () => {
     const encoded = encodeEvent(SAMPLE_EMITTER, makeTopics(3), "0x");
-    expect(encoded.length).toBe(20 + 1 + 96);
+    expect(encoded.length).toBe(1 + 20 + 1 + 96);
   });
 
   it("encodes with 4 topics", () => {
     const encoded = encodeEvent(SAMPLE_EMITTER, makeTopics(4), "0x");
-    expect(encoded.length).toBe(20 + 1 + 128);
+    expect(encoded.length).toBe(1 + 20 + 1 + 128);
   });
 
   it("encodes with empty data", () => {
     const encoded = encodeEvent(SAMPLE_EMITTER, makeTopics(2), "0x");
-    expect(encoded.length).toBe(20 + 1 + 64 + 0);
+    expect(encoded.length).toBe(1 + 20 + 1 + 64);
   });
 
   it("encodes with large data (256 bytes)", () => {
     const largeData = toHex(new Uint8Array(256).fill(0xab)) as Hex;
     const encoded = encodeEvent(SAMPLE_EMITTER, makeTopics(1), largeData);
-    expect(encoded.length).toBe(20 + 1 + 32 + 256);
+    expect(encoded.length).toBe(1 + 20 + 1 + 32 + 256);
+  });
+
+  it("prefixes the EVM codec", () => {
+    const encoded = encodeEvent(SAMPLE_EMITTER, [], "0x");
+    expect(encoded[0]).toBe(EVM_EVENT_CODEC);
   });
 
   it("emitter is stored as 20 bytes (not padded)", () => {
     const encoded = encodeEvent(SAMPLE_EMITTER, [], "0x");
-    const emitterHex = toHex(encoded.slice(0, 20));
+    const emitterHex = toHex(encoded.slice(1, 21));
     expect(emitterHex.toLowerCase()).toBe(SAMPLE_EMITTER.toLowerCase());
   });
 
   it("topic_count is encoded as uint8 (1 byte)", () => {
     const encoded = encodeEvent(SAMPLE_EMITTER, makeTopics(3), "0x");
-    expect(encoded[20]).toBe(3);
+    expect(encoded[21]).toBe(3);
   });
 });
 
@@ -111,18 +117,18 @@ describe("USDC Transfer test vector", () => {
   const data = "0x00000000000000000000000000000000000000000000000000000000000f4240" as Hex;
   const topics = [topic0, topic1, topic2];
 
-  it("canonical bytes length is 149", () => {
-    expect(encodeEvent(emitter, topics, data).length).toBe(149);
+  it("canonical bytes length is 150", () => {
+    expect(encodeEvent(emitter, topics, data).length).toBe(150);
   });
 
   it("emitter stored correctly", () => {
     const encoded = encodeEvent(emitter, topics, data);
-    expect(toHex(encoded.slice(0, 20)).toLowerCase()).toBe(emitter.toLowerCase());
+    expect(toHex(encoded.slice(1, 21)).toLowerCase()).toBe(emitter.toLowerCase());
   });
 
   it("topic_count encodes as 3 (uint8)", () => {
     const encoded = encodeEvent(emitter, topics, data);
-    expect(encoded[20]).toBe(3);
+    expect(encoded[21]).toBe(3);
   });
 
   it("leaf hash matches double-keccak256", () => {

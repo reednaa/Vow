@@ -34,9 +34,7 @@ function makeWitness(overrides?: Partial<EthereumWitnessResult>): EthereumWitnes
 
 describe("encodeVow", () => {
   it("encodes a single-signer vow correctly", () => {
-    const result = encodeVow([
-      { witness: makeWitness(), signerIndex: 1 },
-    ]);
+    const result = encodeVow([{ witness: makeWitness(), signerIndex: 1 }]);
 
     expect(result).toMatch(/^0x/);
     const bytes = toBytes(result);
@@ -145,9 +143,7 @@ describe("encodeVow", () => {
   });
 
   it("handles zero-length proof", () => {
-    const result = encodeVow([
-      { witness: makeWitness({ proof: [] }), signerIndex: 5 },
-    ]);
+    const result = encodeVow([{ witness: makeWitness({ proof: [] }), signerIndex: 5 }]);
     const bytes = toBytes(result);
     expect(bytes[64]).toBe(0); // P=0
     // Signer index right after header
@@ -162,7 +158,7 @@ describe("encodeVow", () => {
     const bytes = toBytes(result);
     const view = new DataView(bytes.buffer);
     const E = view.getUint16(66, false);
-    // emitter(20) + topicCount(1) + no topics + no data = 21
-    expect(E).toBe(21);
+    // codec(1) + emitter(20) + topicCount(1) + no topics + no data = 22
+    expect(E).toBe(22);
   });
 });
