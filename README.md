@@ -3,7 +3,7 @@
 
 Vow is an event attestation framework for providing on-chain applications with an efficient multi-signed event inclusion statement. The framework is designed to be maximally flexible with minimal gas costs. A single event can be proved for as little as 33'000 gas (1 signer, 1'024-leaf tree). 
 
-The project is split into two parts:
+The project is split into three parts:
 
 - [`/witness`](/witness): offchain witness service that indexes blocks, canonicalizes events, builds Merkle roots, signs roots, and serves proofs for individual events.
 - [`/solidity`](/solidity): onchain verification library and witness directory contracts that validate witness signatures plus Merkle proofs and return raw canonical event bytes for consumer-selected decoding.
