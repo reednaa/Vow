@@ -3,6 +3,7 @@
 This repository contains a Solidity implementation of the Vow event attestation protocol.
 
 High level idea:
+
 - For each source block, witnesses build a canonical list of events.
 - Events are ordered by hash, merklized, and the root is signed by a quorum of witnesses.
 - Applications submit a `vow` payload and call `VowLib.processVow(...)` to verify one proven event and recover its raw canonical bytes.
@@ -24,7 +25,9 @@ High level idea:
 
 ## Protocol Flow
 
-1. Build canonical event bytes (`emitter || topic_count || topics || data`).
+1. Build codec-prefixed canonical event bytes:
+   - EVM: `0x01 || emitter || topic_count || topics || data`
+   - Solana: `0x02 || program_id || discriminator || data`
 2. Compute leaf hash as `keccak256(keccak256(event_bytes))`.
 3. Build a Merkle tree over block events (same algorithm for all witnesses and consumers).
 4. Witnesses sign:
@@ -39,7 +42,7 @@ High level idea:
    - Signatures
    - Encoded event
 6. `processVow` verifies signer quorum and signatures, reconstructs root, and returns the raw canonical event bytes.
-7. Consumer contracts choose the decoding strategy they expect and call either `decodeEvent(evt)` or `decodeEmitCPI(evt)`.
+7. Consumer contracts choose the decoding strategy they expect and call either `decodeEvent(evt)` or `decodeEmitCPI(evt)`. Each decoder requires its codec byte.
 
 ## Integrating `VowLib.processVow`
 
@@ -102,6 +105,7 @@ This list is incomplete
 `VowLib` only requires `IWitnessDirectory.getQourumSet(uint256)` returning signer addresses in the expected verification order.
 
 `WitnessDirectory` in this repo is a minimal owner-controlled reference implementation:
+
 - Signer indices are one-byte domain (`1..255`), index `0` is sentinel.
 - Index map must be strictly increasing and terminates at first zero byte.
 - Quorum is global (`qourum`) and checked after resolving the signer list.
@@ -139,6 +143,7 @@ Witnesses should agree on one canonical offchain pipeline and treat it as consen
 ### Signing details
 
 Witnesses sign the typed `Vow` struct digest:
+
 - `Vow(uint256 chainId,uint256 rootBlockNumber,bytes32 root)`
 - EIP-712 style digest with bare domain `keccak256("EIP712Domain()")`.
 

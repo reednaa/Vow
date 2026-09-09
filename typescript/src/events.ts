@@ -2,21 +2,21 @@ import { type Address, type Hex, keccak256, toBytes, toHex } from "viem";
 import bs58 from "bs58";
 import type { DecodedEthereumEvent, DecodedSolanaEvent } from "./types.js";
 
-export const EVENT_IX_TAG = new Uint8Array([
-  0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d,
-]);
+export const EVM_EVENT_CODEC = 0x01;
+export const SOLANA_EVENT_CODEC = 0x02;
 
-export function encodeEthereumEvent(
-  emitter: Address,
-  topics: Hex[],
-  data: Hex,
-): Uint8Array {
+export const EVENT_IX_TAG = new Uint8Array([0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d]);
+
+export function encodeEthereumEvent(emitter: Address, topics: Hex[], data: Hex): Uint8Array {
   const emitterBytes = toBytes(emitter);
   const topicBytesArr = topics.map((topic) => toBytes(topic));
   const dataBytes = toBytes(data);
 
-  const result = new Uint8Array(20 + 1 + topics.length * 32 + dataBytes.length);
+  const result = new Uint8Array(1 + 20 + 1 + topics.length * 32 + dataBytes.length);
   let offset = 0;
+
+  result[offset] = EVM_EVENT_CODEC;
+  offset += 1;
 
   result.set(emitterBytes, offset);
   offset += 20;
@@ -34,7 +34,11 @@ export function encodeEthereumEvent(
 }
 
 export function decodeEthereumEvent(canonicalBytes: Uint8Array): DecodedEthereumEvent {
-  let offset = 0;
+  if (canonicalBytes[0] !== EVM_EVENT_CODEC) {
+    throw new Error("Invalid canonical Ethereum event codec");
+  }
+
+  let offset = 1;
 
   const emitterBytes = canonicalBytes.slice(offset, offset + 20);
   offset += 20;
@@ -59,29 +63,33 @@ export function decodeEthereumEvent(canonicalBytes: Uint8Array): DecodedEthereum
 export function encodeSolanaEvent(
   programId: Uint8Array | Hex,
   discriminator: Uint8Array | Hex,
-  data: Uint8Array | Hex,
+  data: Uint8Array | Hex
 ): Uint8Array {
   const programIdBytes = typeof programId === "string" ? toBytes(programId) : programId;
   const discriminatorBytes =
     typeof discriminator === "string" ? toBytes(discriminator) : discriminator;
   const dataBytes = typeof data === "string" ? toBytes(data) : data;
 
-  const result = new Uint8Array(40 + dataBytes.length);
-  result.set(programIdBytes, 0);
-  result.set(discriminatorBytes, 32);
-  result.set(dataBytes, 40);
+  const result = new Uint8Array(1 + 40 + dataBytes.length);
+  result[0] = SOLANA_EVENT_CODEC;
+  result.set(programIdBytes, 1);
+  result.set(discriminatorBytes, 33);
+  result.set(dataBytes, 41);
   return result;
 }
 
 export function decodeSolanaEvent(canonicalBytes: Uint8Array): DecodedSolanaEvent {
-  if (canonicalBytes.length < 40) {
-    throw new Error(`Invalid canonical event: expected >= 40 bytes, got ${canonicalBytes.length}`);
+  if (canonicalBytes[0] !== SOLANA_EVENT_CODEC) {
+    throw new Error("Invalid canonical Solana event codec");
+  }
+  if (canonicalBytes.length < 41) {
+    throw new Error(`Invalid canonical event: expected >= 41 bytes, got ${canonicalBytes.length}`);
   }
 
   return {
-    programId: toHex(canonicalBytes.slice(0, 32)) as Hex,
-    discriminator: toHex(canonicalBytes.slice(32, 40)) as Hex,
-    data: toHex(canonicalBytes.slice(40)) as Hex,
+    programId: toHex(canonicalBytes.slice(1, 33)) as Hex,
+    discriminator: toHex(canonicalBytes.slice(33, 41)) as Hex,
+    data: toHex(canonicalBytes.slice(41)) as Hex,
   };
 }
 
@@ -90,11 +98,7 @@ export function computeLeafHash(canonicalBytes: Uint8Array): Hex {
   return keccak256(inner);
 }
 
-export function isEmitCpi(
-  innerData: string,
-  innerProgram: string,
-  parentProgram: string,
-): boolean {
+export function isEmitCpi(innerData: string, innerProgram: string, parentProgram: string): boolean {
   if (innerProgram !== parentProgram) return false;
 
   const bytes = bs58.decode(innerData);
@@ -108,7 +112,7 @@ export function isEmitCpi(
 
 export function extractEmitCpiEncoding(
   innerData: string,
-  programId: Uint8Array,
+  programId: Uint8Array
 ): {
   discriminator: Uint8Array;
   data: Uint8Array;

@@ -512,7 +512,7 @@ async function main() {
     const e0 = eventsPerRpc[0]![firstDivergence]!;
     const e1 = eventsPerRpc[1]![firstDivergence]!;
     console.log(
-      `Event ${firstDivergence} canonicalBytes differ starting at byte 32 (discriminator).`,
+      `Event ${firstDivergence} canonicalBytes differ starting at byte 33 (discriminator).`,
     );
     console.log(`RPC 0 leafHash: ${e0.leafHash}`);
     console.log(`RPC 1 leafHash: ${e1.leafHash}`);

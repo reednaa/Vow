@@ -20,7 +20,7 @@ contract MockEvent {
     bytes32[] calldata topics,
     bytes calldata data
   ) external pure returns (bytes memory encodedEvent) {
-    encodedEvent = abi.encodePacked(emitter, uint8(topics.length), topics, data);
+    encodedEvent = abi.encodePacked(uint8(0x01), emitter, uint8(topics.length), topics, data);
   }
 
   function decodeEvent(
@@ -345,7 +345,7 @@ contract EventLibTest is Test {
     bytes8 discriminator,
     bytes calldata data
   ) external {
-    bytes memory evt = abi.encodePacked(programId, discriminator, data);
+    bytes memory evt = abi.encodePacked(uint8(0x02), programId, discriminator, data);
 
     (bytes32 decodedProgramId, bytes8 decodedDiscriminator, bytes memory decodedData) = v.decodeEmitCPI(evt);
 
@@ -387,27 +387,27 @@ contract VowLibFindingsTest is Test {
     bytes memory vow;
 
     {
-        bytes32[] memory proof = new bytes32[](1);
-        bytes32 leaf = v.leafHash(evt);
-        bytes32 root = v.computeMerkleRootCalldata(proof, leaf);
+      bytes32[] memory proof = new bytes32[](1);
+      bytes32 leaf = v.leafHash(evt);
+      bytes32 root = v.computeMerkleRootCalldata(proof, leaf);
 
-        bytes[] memory signatures = new bytes[](1);
-        uint8[] memory signerIndices = new uint8[](1);
-        signerIndices[0] = 1;
-        bytes32 digest = v.hashTypedData(v.vowTypehash(CHAIN_ID_TEST, ROOT_BLOCK_NUMBER_TEST, root));
-        {
-          (uint8 vv, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
-          signatures[0] = abi.encodePacked(r, s, vv);
-        }
+      bytes[] memory signatures = new bytes[](1);
+      uint8[] memory signerIndices = new uint8[](1);
+      signerIndices[0] = 1;
+      bytes32 digest = v.hashTypedData(v.vowTypehash(CHAIN_ID_TEST, ROOT_BLOCK_NUMBER_TEST, root));
+      {
+        (uint8 vv, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        signatures[0] = abi.encodePacked(r, s, vv);
+      }
 
-        vow = v.encodeVowExternal(CHAIN_ID_TEST, ROOT_BLOCK_NUMBER_TEST, proof, signerIndices, signatures, evt);
+      vow = v.encodeVowExternal(CHAIN_ID_TEST, ROOT_BLOCK_NUMBER_TEST, proof, signerIndices, signatures, evt);
     }
 
     (uint256 gotChainId, uint256 gotRootBlockNumber, bytes memory gotEvt) = v.processVow(address(directory), vow);
     assertEq(gotChainId, CHAIN_ID_TEST);
     assertEq(gotRootBlockNumber, ROOT_BLOCK_NUMBER_TEST);
     assertEq(gotEvt, evt);
-    
+
     (address emitter, bytes32[] memory gotTopics, bytes memory gotData) = v.decodeEvent(gotEvt);
 
     assertEq(emitter, address(0xBEEF));
@@ -418,6 +418,7 @@ contract VowLibFindingsTest is Test {
   // Finding: decodeEvent accepts topic counts above 4.
   function test_revertIf_decodeEvent_has_more_than_4_topics() external {
     bytes memory evt = abi.encodePacked(
+      uint8(0x01),
       address(0xBEEF),
       uint8(5),
       bytes32(uint256(1)),
@@ -432,9 +433,23 @@ contract VowLibFindingsTest is Test {
   }
 
   function test_revertIf_decodeEmitCPI_event_shorter_than_header() external {
-    bytes memory evt = abi.encodePacked(bytes32(uint256(1)), bytes7(0));
+    bytes memory evt = abi.encodePacked(uint8(0x02), bytes32(uint256(1)), bytes7(0));
 
     vm.expectRevert(abi.encodeWithSelector(VowLib.InvalidEmitCPI.selector));
+    v.decodeEmitCPI(evt);
+  }
+
+  function test_revertIf_decodeEvent_has_wrong_codec() external {
+    bytes memory evt = abi.encodePacked(uint8(0x02), address(0xBEEF), uint8(0));
+
+    vm.expectRevert(abi.encodeWithSelector(VowLib.InvalidEventCodec.selector));
+    v.decodeEvent(evt);
+  }
+
+  function test_revertIf_decodeEmitCPI_has_wrong_codec() external {
+    bytes memory evt = abi.encodePacked(uint8(0x01), bytes32(uint256(1)), bytes8(0));
+
+    vm.expectRevert(abi.encodeWithSelector(VowLib.InvalidEventCodec.selector));
     v.decodeEmitCPI(evt);
   }
 }

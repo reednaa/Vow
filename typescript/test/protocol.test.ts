@@ -16,6 +16,7 @@ import {
   computeVowDigest,
   decodeEthereumEvent,
   decodeSolanaEvent,
+  EVM_EVENT_CODEC,
   encodeEthereumEvent,
   encodeSolanaEvent,
   encodeVow,
@@ -26,6 +27,7 @@ import {
   mergeWitnesses,
   normalizeChainId,
   signVowRoot,
+  SOLANA_EVENT_CODEC,
   verifyProof,
   ZERO_HASH,
   type EthereumWitnessResult,
@@ -35,13 +37,12 @@ import {
 } from "../src/index.js";
 
 const EMITTER = "0x1234567890abcdef1234567890abcdef12345678" as Address;
-const TOPIC = (`0x${"aa".repeat(32)}`) as Hex;
+const TOPIC = `0x${"aa".repeat(32)}` as Hex;
 const DATA = "0xdeadbeef" as Hex;
-const PROOF_HASH = (`0x${"bb".repeat(32)}`) as Hex;
-const SIG = (`0x${"cc".repeat(65)}`) as Hex;
-const SIG2 = (`0x${"dd".repeat(65)}`) as Hex;
-const TEST_PRIVATE_KEY =
-  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const PROOF_HASH = `0x${"bb".repeat(32)}` as Hex;
+const SIG = `0x${"cc".repeat(65)}` as Hex;
+const SIG2 = `0x${"dd".repeat(65)}` as Hex;
+const TEST_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const TEST_ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
 function makeEthereumWitness(overrides?: Partial<EthereumWitnessResult>): EthereumWitnessResult {
@@ -66,8 +67,8 @@ function makeSolanaWitness(overrides?: Partial<SolanaWitnessResult>): SolanaWitn
     proof: [PROOF_HASH],
     signature: SIG,
     event: {
-      programId: (`0x${"11".repeat(32)}`) as Hex,
-      discriminator: (`0x${"22".repeat(8)}`) as Hex,
+      programId: `0x${"11".repeat(32)}` as Hex,
+      discriminator: `0x${"22".repeat(8)}` as Hex,
       data: "0x3344",
     },
     ...overrides,
@@ -85,10 +86,10 @@ describe("chain ids", () => {
     expect(ETHEREUM_MAINNET_CHAIN_ID).toBe("eip155:1");
     expect(caip2ToNumericChainId("eip155:31337")).toBe(31337n);
     expect(normalizeChainId("solana:mainnet")).toBe(
-      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
     );
     expect(caip2ToNumericChainId("solana:mainnet")).toBe(
-      caip2ToNumericChainId(normalizeChainId("solana:mainnet")),
+      caip2ToNumericChainId(normalizeChainId("solana:mainnet"))
     );
   });
 });
@@ -98,6 +99,10 @@ describe("event encoding", () => {
     const encoded = encodeEthereumEvent(EMITTER, [TOPIC], DATA);
     const decoded = decodeEthereumEvent(encoded);
 
+    expect(EVM_EVENT_CODEC).toBe(0x01);
+    expect(encoded[0]).toBe(EVM_EVENT_CODEC);
+    expect(toHex(encoded.slice(1, 21)).toLowerCase()).toBe(EMITTER.toLowerCase());
+    expect(encoded[21]).toBe(1);
     expect(decoded.emitter.toLowerCase()).toBe(EMITTER.toLowerCase());
     expect(decoded.topics).toEqual([TOPIC]);
     expect(decoded.data).toBe(DATA);
@@ -105,16 +110,38 @@ describe("event encoding", () => {
   });
 
   it("roundtrips Solana canonical events from hex or bytes", () => {
-    const programId = (`0x${"12".repeat(32)}`) as Hex;
-    const discriminator = (`0x${"34".repeat(8)}`) as Hex;
+    const programId = `0x${"12".repeat(32)}` as Hex;
+    const discriminator = `0x${"34".repeat(8)}` as Hex;
     const data = "0x5678" as Hex;
     const encoded = encodeSolanaEvent(programId, discriminator, data);
     const decoded = decodeSolanaEvent(encoded);
 
+    expect(SOLANA_EVENT_CODEC).toBe(0x02);
+    expect(encoded[0]).toBe(SOLANA_EVENT_CODEC);
+    expect(toHex(encoded.slice(1, 33))).toBe(programId);
     expect(decoded).toEqual({ programId, discriminator, data });
     expect(encodeSolanaEvent(toBytes(programId), toBytes(discriminator), toBytes(data))).toEqual(
-      encoded,
+      encoded
     );
+  });
+
+  it("rejects missing, unknown, and cross-chain codecs", () => {
+    const ethereum = encodeEthereumEvent(EMITTER, [TOPIC], DATA);
+    const solana = encodeSolanaEvent(
+      `0x${"12".repeat(32)}` as Hex,
+      `0x${"34".repeat(8)}` as Hex,
+      "0x5678"
+    );
+
+    expect(() => decodeEthereumEvent(ethereum.slice(1))).toThrow("Ethereum event codec");
+    expect(() => decodeEthereumEvent(solana)).toThrow("Ethereum event codec");
+    expect(() => decodeSolanaEvent(solana.slice(1))).toThrow("Solana event codec");
+    expect(() => decodeSolanaEvent(ethereum)).toThrow("Solana event codec");
+
+    ethereum[0] = 0xff;
+    solana[0] = 0xff;
+    expect(() => decodeEthereumEvent(ethereum)).toThrow("Ethereum event codec");
+    expect(() => decodeSolanaEvent(solana)).toThrow("Solana event codec");
   });
 });
 
@@ -127,7 +154,10 @@ describe("merkle proofs", () => {
       expect(verifyProof(root, leaf, generateProof(tree, index))).toBe(true);
     }
 
-    expect(buildMerkleTree([])).toEqual({ root: ZERO_HASH, tree: [[ZERO_HASH]] });
+    expect(buildMerkleTree([])).toEqual({
+      root: ZERO_HASH,
+      tree: [[ZERO_HASH]],
+    });
   });
 });
 
@@ -137,7 +167,7 @@ describe("signing", () => {
     const params = {
       chainId: 1n,
       rootBlockNumber: 100n,
-      root: (`0x${"ab".repeat(32)}`) as Hex,
+      root: `0x${"ab".repeat(32)}` as Hex,
     };
 
     expect(getVowTypedData(params).primaryType).toBe("Vow");
@@ -182,7 +212,7 @@ describe("Vow encoding", () => {
 
     expect(bytes[64]).toBe(1);
     expect(bytes[65]).toBe(1);
-    expect(view.getUint16(66, false)).toBe(42);
+    expect(view.getUint16(66, false)).toBe(43);
   });
 
   it("rejects mismatched witness groups", () => {
@@ -205,7 +235,7 @@ describe("Vow encoding", () => {
           }),
           signerIndex: 2,
         },
-      ]),
+      ])
     ).toThrow("same event");
   });
 });

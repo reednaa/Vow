@@ -7,7 +7,6 @@ export const TEST_CHAIN_ID = `eip155:${TEST_CHAIN_ID_NUMERIC}`;
 
 export const anvilServer = Server.create({
   instance: Instance.anvil({
-    loadState: new URL("./anvil.state", import.meta.url).pathname,
     chainId: TEST_CHAIN_ID_NUMERIC,
   } as any),
   port: TEST_ANVIL_PORT,

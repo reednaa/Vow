@@ -1,7 +1,6 @@
-
 <h1 align="center">Vow</h1>
 
-Vow is an event attestation framework for providing on-chain applications with an efficient multi-signed event inclusion statement. The framework is designed to be maximally flexible with minimal gas costs. A single event can be proved for as little as 33'000 gas (1 signer, 1'024-leaf tree). 
+Vow is an event attestation framework for providing on-chain applications with an efficient multi-signed event inclusion statement. The framework is designed to be maximally flexible with minimal gas costs. A single event can be proved for as little as 33'000 gas (1 signer, 1'024-leaf tree).
 
 The project is split into three parts:
 
@@ -14,7 +13,7 @@ The project is split into three parts:
 Create the cheapest, most flexible, and most efficient cross-chain messaging-adjacent framework possible. Additionally, safety should be built in:
 
 - Finality decisions is determined by witnesses off-chain.
-- Multi-vendor solutions throughout the entire stack: Natively support multiple witness, multiple data sources. 
+- Multi-vendor solutions throughout the entire stack: Natively support multiple witness, multiple data sources.
 - Strong verification and truth policy: Each witness can independently attest to a block event root and each witness can use multiple truth sources.
 
 ## Strategy
@@ -25,6 +24,11 @@ Create the cheapest, most flexible, and most efficient cross-chain messaging-adj
 4. Consumer contracts call `VowLib.processVow(...)` to verify quorum signatures and proof membership, then decode the returned raw event bytes with the strategy they expect.
 
 This gives applications a clear trust model: cryptographic proof of inclusion plus an explicit witness quorum policy.
+
+Canonical events begin with a one-byte codec included in the Merkle leaf:
+
+- `0x01`: EVM log (`emitter || topic_count || topics || data`)
+- `0x02`: Solana `emit_cpi!()` event (`program_id || discriminator || data`)
 
 ## TypeScript SDK
 

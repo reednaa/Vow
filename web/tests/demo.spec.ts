@@ -42,12 +42,13 @@ const MOCK_SOLANA_WITNESS = {
   },
 };
 
-const ETHEREUM_EVT = (`0x1111111111111111111111111111111111111111` +
+const ETHEREUM_EVT = (`0x01` +
+  `1111111111111111111111111111111111111111` +
   `01` +
   `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` +
   `deadbeef`) as `0x${string}`;
 
-const SOLANA_EVT = (`0x${MOCK_SOLANA_WITNESS.event.programId}` +
+const SOLANA_EVT = (`0x02${MOCK_SOLANA_WITNESS.event.programId}` +
   `${MOCK_SOLANA_WITNESS.event.discriminator}` +
   `${MOCK_SOLANA_WITNESS.event.data}`) as `0x${string}`;
 

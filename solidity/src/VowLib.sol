@@ -29,8 +29,12 @@ library VowLib {
   using EfficientHashLib for bytes32[];
 
   error InvalidlySignedRoot();
+  error InvalidEventCodec(); // 0x5e091a63
   error TooManyTopics(); // 0x643f8f9e
   error InvalidEmitCPI(); // 0xf4eabc02
+
+  uint8 internal constant EVM_EVENT_CODEC = 0x01;
+  uint8 internal constant SOLANA_EVENT_CODEC = 0x02;
 
   bytes32 private constant VOW_TYPE_HASH =
     keccak256(bytes("Vow(uint256 chainId,uint256 rootBlockNumber,bytes32 root)"));
@@ -40,8 +44,7 @@ library VowLib {
     0x20bcc3f8105eea47d067386e42e60246e89393cd61c512edd1e87688890fb914;
 
   /// @dev Precomputed `keccak256(abi.encode(_BARE_EIP712_DOMAIN_TYPEHASH))`.
-  bytes32 private constant _DOMAIN_SEPARATOR =
-    0x6192106f129ce05c9075d319c1fa6ea9b3ae37cbd0c1ef92e2be7137bb07baa1;
+  bytes32 private constant _DOMAIN_SEPARATOR = 0x6192106f129ce05c9075d319c1fa6ea9b3ae37cbd0c1ef92e2be7137bb07baa1;
 
   function vowTypehash(
     uint256 chainId,
@@ -168,7 +171,7 @@ library VowLib {
           proof.length := div(psize, 32)
         }
         bytes32 root = computeMerkleRootCalldata(proof, ourLeaf);
-        
+
         digest = _hashTypedData(vowTypehash(chainId, rootBlockNumber, root));
       }
 
@@ -178,7 +181,10 @@ library VowLib {
         uint256 signerIndexies;
         assembly ("memory-safe") {
           // We need to clean
-          signerIndexies := shl(mul(sub(32, S), 8), shr(mul(sub(32, S), 8), calldataload(add(vow.offset, add(68, psize)))))
+          signerIndexies := shl(
+            mul(sub(32, S), 8),
+            shr(mul(sub(32, S), 8), calldataload(add(vow.offset, add(68, psize))))
+          )
         }
         signers = IWitnessDirectory(directory).getQourumSet(signerIndexies);
       }
@@ -214,13 +220,14 @@ library VowLib {
    * │                      EVENT ENCODING                         │
    * ├─────────────────────────────────────────────────────────────┤
    * │                                                             │
-   * │  Byte 0              20              21        21 + N*32    │
-   * │ ┌──────────────────┬───┬─────────────────────┬────────────┐ │
-   * │ │     emitter      │ N │       topics        │    data    │ │
-   * │ │    (20 bytes)    │   │    (N * 32 bytes)   │   (rest)   │ │
-   * │ └──────────────────┴───┴─────────────────────┴────────────┘ │
+   * │  Byte 0  1              21              22      22 + N*32  │
+   * │ ┌─────┬──────────────────┬───┬─────────────────┬─────────┐ │
+   * │ │codec│     emitter      │ N │     topics      │  data   │ │
+   * │ │(1 B)│    (20 bytes)    │1 B│  (N * 32 bytes) │ (rest)  │ │
+   * │ └─────┴──────────────────┴───┴─────────────────┴─────────┘ │
    * │                                                             │
    * │  ┌───────────────────────────────────────────────────────┐  │
+   * │  │ codec    : uint8     —  1 byte, EVM = 0x01            │  │
    * │  │ emitter  : address   — 20 bytes, left-packed          │  │
    * │  │ N        : uint8     —  1 byte,  topic count (0–4)    │  │
    * │  │ topics   : bytes32[] — N × 32 bytes, packed           │  │
@@ -230,14 +237,13 @@ library VowLib {
    * │  Layout example: Transfer(from, to, amount)                 │
    * │  topics = [sig, from, to]  data = abi.encode(amount)        │
    * │                                                             │
-   * │ ┌────────────────────┬──┬────────┬────────┬────────┬──────┐ │
-   * │ │ 0xContractAddr...  │03│ topic0 │ topic1 │ topic2 │ data │ │
-   * │ │      20 bytes      │1B│ 32 B   │ 32 B   │ 32 B   │ var  │ │
-   * │ └────────────────────┴──┴────────┴────────┴────────┴──────┘ │
-   * │ Byte 0               20 21       53       85      117       │
+   * │ ┌──┬──────────────────┬──┬────────┬────────┬────────┬──────┐│
+   * │ │01│0xContractAddr... │03│ topic0 │ topic1 │ topic2 │ data ││
+   * │ │1B│     20 bytes     │1B│ 32 B   │ 32 B   │ 32 B   │ var  ││
+   * │ └──┴──────────────────┴──┴────────┴────────┴────────┴──────┘│
    * │                                                             │
-   * │  Total: 21 + (N * 32) + len(data) bytes                     │
-   * │  Digest: keccak256(encoded)                                 │
+   * │  Total: 22 + (N * 32) + len(data) bytes                     │
+   * │  Leaf: keccak256(keccak256(encoded))                         │
    * └─────────────────────────────────────────────────────────────┘
    */
   //--- Encoding ---//
@@ -253,10 +259,10 @@ library VowLib {
         mstore(0x00, 0x643f8f9e) // `TooManyTopics()`.
         revert(0x1c, 0x04)
       }
-      // 20 for emitter. + 1 for numTopics. 32 for each topic and then data.
+      // 1 for codec. 20 for emitter. 1 for numTopics. 32 for each topic and then data.
       // numTopics is bounded by above.
       // todo: data.length is unbounded
-      let payloadSize := add(add(21, numTopics32), data.length)
+      let payloadSize := add(add(22, numTopics32), data.length)
 
       // Get free memory pointer
       encodedEvent := mload(0x40)
@@ -264,15 +270,17 @@ library VowLib {
       mstore(0x40, add(add(encodedEvent, payloadSize), 32))
 
       // Copy topics into place, including numTopics.
-      calldatacopy(add(encodedEvent, 21), sub(topics.offset, 32), add(numTopics32, 32))
+      calldatacopy(add(encodedEvent, 22), sub(topics.offset, 32), add(numTopics32, 32))
 
       // Set emitter. This overwrite the upper 31 bytes of numTopics.
-      mstore(add(encodedEvent, 20), emitter)
+      mstore(add(encodedEvent, 21), emitter)
+      // Prefix the canonical event with the EVM codec.
+      mstore8(add(encodedEvent, 32), EVM_EVENT_CODEC)
       // Store payload size. This will overwrite the upper part of emitter such dirty bits are gone.
       mstore(encodedEvent, payloadSize)
 
       // Copy data in place.
-      calldatacopy(add(encodedEvent, add(53, numTopics32)), data.offset, data.length)
+      calldatacopy(add(encodedEvent, add(54, numTopics32)), data.offset, data.length)
     }
   }
 
@@ -280,21 +288,21 @@ library VowLib {
   function decodeEvent(
     bytes calldata evt
   ) internal pure returns (address emitter, bytes32[] calldata topics, bytes calldata data) {
+    if (evt.length == 0 || uint8(evt[0]) != EVM_EVENT_CODEC) revert InvalidEventCodec();
     assembly ("memory-safe") {
       // Load first word.
       let word := calldataload(evt.offset)
       // Extract the emitter from the evt.
-      emitter := shr(mul(8, 12), word)
-      // clear address from word and then clear beginning of topics.
-      let numTopics := shr(mul(31, 8), shl(mul(20, 8), word))
+      emitter := shr(mul(8, 12), shl(8, word))
+      let numTopics := byte(21, word)
       if gt(numTopics, 4) {
         mstore(0x00, 0x643f8f9e) // `TooManyTopics()`.
         revert(0x1c, 0x04)
       }
       topics.length := numTopics
-      topics.offset := add(evt.offset, 21)
+      topics.offset := add(evt.offset, 22)
       // TODO: overflow
-      let topicsEnd := add(mul(topics.length, 32), 21)
+      let topicsEnd := add(mul(topics.length, 32), 22)
       data.offset := add(evt.offset, topicsEnd)
       data.length := sub(evt.length, topicsEnd)
     }
@@ -305,13 +313,14 @@ library VowLib {
    * │              SOLANA emit_cpi EVENT ENCODING                 │
    * ├─────────────────────────────────────────────────────────────┤
    * │                                                             │
-   * │  Byte 0              32             40                      │
-   * │ ┌────────────────────┬───────────────┬────────────────────┐ │
-   * │ │     programId      │ discriminator │  borsh_event_data  │ │
-   * │ │     (32 bytes)     │   (8 bytes)   │      (N bytes)     │ │
-   * │ └────────────────────┴───────────────┴────────────────────┘ │
+   * │  Byte 0  1              33             41                  │
+   * │ ┌─────┬──────────────────┬───────────────┬────────────────┐ │
+   * │ │codec│    programId     │ discriminator │borsh_event_data│ │
+   * │ │(1 B)│    (32 bytes)    │   (8 bytes)   │   (N bytes)    │ │
+   * │ └─────┴──────────────────┴───────────────┴────────────────┘ │
    * │                                                             │
    * │  ┌───────────────────────────────────────────────────────┐  │
+   * │  │ codec         : uint8   — 1 byte, Solana = 0x02       │  │
    * │  │ programId     : bytes32 — 32 bytes, Ed25519 pubkey    │  │
    * │  │ discriminator : bytes8  —  8 bytes, anchor event tag  │  │
    * │  │                 sha256("event:EventName")[0..8]       │  │
@@ -319,7 +328,7 @@ library VowLib {
    * │  │                 Borsh-serialized event payload        │  │
    * │  └───────────────────────────────────────────────────────┘  │
    * │                                                             │
-   * │  Total: 40 + len(data) bytes                                │
+   * │  Total: 41 + len(data) bytes                                │
    * │  Digest: keccak256(keccak256(encoded))                      │
    * │                                                             │
    * │  Source: innerInstructions[].instructions[].data            │
@@ -329,13 +338,14 @@ library VowLib {
   function decodeEmitCPI(
     bytes calldata evt
   ) internal pure returns (bytes32 programId, bytes8 discriminator, bytes calldata data) {
-    if (evt.length < 40) revert InvalidEmitCPI();
+    if (evt.length < 41) revert InvalidEmitCPI();
+    if (uint8(evt[0]) != SOLANA_EVENT_CODEC) revert InvalidEventCodec();
     assembly ("memory-safe") {
-      programId := calldataload(evt.offset)
-      let word2 := calldataload(add(evt.offset, 32))
+      programId := calldataload(add(evt.offset, 1))
+      let word2 := calldataload(add(evt.offset, 33))
       discriminator := word2
-      data.offset := add(evt.offset, 40)
-      data.length := sub(evt.length, 40)
+      data.offset := add(evt.offset, 41)
+      data.length := sub(evt.length, 41)
     }
   }
 

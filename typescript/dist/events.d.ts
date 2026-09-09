@@ -1,5 +1,7 @@
 import { type Address, type Hex } from "viem";
 import type { DecodedEthereumEvent, DecodedSolanaEvent } from "./types.js";
+export declare const EVM_EVENT_CODEC = 1;
+export declare const SOLANA_EVENT_CODEC = 2;
 export declare const EVENT_IX_TAG: Uint8Array<ArrayBuffer>;
 export declare function encodeEthereumEvent(emitter: Address, topics: Hex[], data: Hex): Uint8Array;
 export declare function decodeEthereumEvent(canonicalBytes: Uint8Array): DecodedEthereumEvent;
