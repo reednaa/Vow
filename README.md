@@ -55,3 +55,8 @@ chain and compares it with the witness response.
 4. Validate configured witness signers and call `VowLib.processVow` through caller-provided viem `readContract` / `estimateContractGas` functions.
 
 The SDK intentionally does not own transaction execution or private-key signing. Signing helpers accept an external viem-compatible `signTypedData` function.
+
+For local development, run `bun install --frozen-lockfile` in `typescript/` as well
+as in the consuming app. CI installs the SDK dependencies separately, then uses
+`bun run check` and `bun run test` in `witness/` and `bun run build` in `web/`
+to build the SDK before use.

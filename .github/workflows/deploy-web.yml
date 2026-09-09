@@ -29,6 +29,10 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Install SDK dependencies
+        working-directory: typescript
+        run: bun install --frozen-lockfile
+
       - name: Install dependencies
         working-directory: web
         run: bun install --frozen-lockfile

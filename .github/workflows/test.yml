@@ -75,6 +75,10 @@ jobs:
         working-directory: solidity
         run: |
           forge build
+      - name: Install SDK dependencies
+        working-directory: typescript
+        run: bun install --frozen-lockfile
+
       - name: Install dependencies
         working-directory: witness
         run: |
@@ -90,9 +94,9 @@ jobs:
       - name: Type check
         working-directory: witness
         run: |
-          bunx tsc --noEmit
+          bun run check
 
       - name: Run tests
         working-directory: witness
         run: |
-          bun test
+          bun run test
