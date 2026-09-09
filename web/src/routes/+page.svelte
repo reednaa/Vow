@@ -24,7 +24,7 @@
   } from "$lib/types.js";
   import { createPublicClient, http, type Address, type Hex } from "viem";
 
-  const DEFAULT_WITNESS_DIRECTORY = "0x658C2eC56b8315acF54CeC87b41181079288a8fC";
+  const DEFAULT_WITNESS_DIRECTORY = "0x108214A3f47A99f9b4f27c7f16CC9B7136653420";
   const DEFAULT_MOCK_VOW_LIB = "0xCb0fBC299318bf84143d6F1C43D4Db5AAe7fA5B9";
   const DEFAULT_RPC_URL = "https://ethereum-rpc.publicnode.com";
   const DEFAULT_ETHEREUM_BLOCK_NUMBER = 25_061_118;
