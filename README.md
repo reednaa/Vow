@@ -30,6 +30,21 @@ Canonical events begin with a one-byte codec included in the Merkle leaf:
 - `0x01`: EVM log (`emitter || topic_count || topics || data`)
 - `0x02`: Solana `emit_cpi!()` event (`program_id || discriminator || data`)
 
+## Web Demo
+
+`web/` contains the demo hosted at `vav.me` through GitHub Pages. Changes under
+`web/` deploy when pushed to `main`.
+
+The demo defaults to `https://witness.vav.me` with signer index 1 and the following
+directory configuration:
+
+- WitnessDirectory: `0x658C2eC56b8315acF54CeC87b41181079288a8fC`
+- Owner: `0xf79Db8d4E9baF5266B2578790363F027AE550B7a`
+- Signer (index 1): `0xd92f7b53eD04c33c744a43071F1f76eE421D2De7`
+
+The demo reads the signer address from the directory on the selected destination
+chain and compares it with the witness response.
+
 ## TypeScript SDK
 
 `@vow/protocol` is the shared TypeScript package for protocol consumers and witness operators. In this repo, `witness/` and `web/` consume it locally with `file:../typescript`; their build/test scripts build the SDK before use, so the package does not need to be published yet. It exposes stateless helpers for the full client flow:
